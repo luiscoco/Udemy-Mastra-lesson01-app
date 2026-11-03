@@ -9,8 +9,9 @@
     try { localStorage.setItem(key, document.documentElement.dataset.theme); } catch {}
     label();
   });
-  for (const copy of document.querySelectorAll("button[data-copy]")) {
-    copy.addEventListener("click", async () => {
+  document.addEventListener("click", async event => {
+      const copy = event.target instanceof Element ? event.target.closest("button[data-copy]") : null;
+      if (!(copy instanceof HTMLButtonElement)) return;
       const source = document.getElementById(copy.dataset.copy);
       if (!source) return;
       try {
@@ -18,6 +19,5 @@
         copy.textContent = "Copied";
       } catch { copy.textContent = "Select code to copy"; }
       setTimeout(() => { copy.textContent = "Copy code"; }, 2000);
-    });
-  }
+  });
 })();

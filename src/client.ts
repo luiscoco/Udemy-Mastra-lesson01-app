@@ -1,3 +1,5 @@
+import { renderAnswer } from "./markdown.js";
+
 type Note = { id: string; title: string; text: string };
 type Event = { type: string; text?: string; model?: string; query?: string; documents?: Note[];
   status?: string; sourceIds?: string[]; toolCalls?: number; steps?: number; durationMs?: number; runId?: string };
@@ -69,6 +71,7 @@ function addEvidence(notes: Note[]) {
 function reset(mode: string) {
   documents.clear();
   answer.textContent = "";
+  answer.classList.remove("markdown-answer");
   events.replaceChildren();
   evidence.replaceChildren();
   sourceLinks.replaceChildren();
@@ -95,7 +98,7 @@ function handle(event: Event) {
   }
   if (event.type === "answer") {
     stage(3);
-    answer.textContent = event.text || "";
+    renderAnswer(answer, event.text || "");
     log("4 · Model answer", "The generated answer is displayed above. Compare its citations with the returned passages.");
   }
   if (event.type === "result") {

@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-11-03T09:50:53.414Z",
+  "responseSource": "Controlled Markdown response fixture; no model call",
+  "checks": [
+    "Markdown headings, emphasis and lists render",
+    "Fenced TypeScript and ts aliases are highlighted",
+    "Code panel, font and keyword colors match explanation snippets",
+    "Static and dynamic copy controls work",
+    "Dark theme and mobile layout work",
+    "Unsafe HTML and JavaScript URLs are removed",
+    "Code literals remain unchanged",
+    "No browser errors"
+  ]
+}

@@ -56,6 +56,8 @@ npm start
 
 All pages support the shared light/dark theme and responsive layout. The astronaut artwork, typography, orange heading accent, blue navigation, pastel cards and code-highlighting integration follow the supplied reference apps.
 
+AI answers render sanitized Markdown. Fenced code blocks use the same Prism highlighting, navy panels and copy-code controls as the explanation pages. Headings, lists, inline code and tables are formatted instead of displaying raw Markdown.
+
 ## What runs
 
 The live tutor uses the real `@mastra/core` runtime:
@@ -99,6 +101,8 @@ npm test
 
 Offline tests cover retrieval outcomes, invalid inputs, citation provenance, registration with the installed Mastra runtime, source-excerpt freshness and HTTP behavior. They make no paid model calls. A configured provider and a live run are needed to verify real model behavior in your own environment.
 
+Optional response-formatting browser regression: run `npm run test:browser` with Chrome installed, or set `BROWSER_EXECUTABLE` to your Chrome/Chromium executable. It starts an isolated local test server, supplies a controlled response fixture, and checks Markdown, shared snippet colors, copy controls, mobile layout and HTML sanitization without a model call.
+
 ## Suggested student exercise
 
 1. Run local search for **How do memory and retrieval differ?** Read the returned notes.
@@ -115,6 +119,7 @@ src/
   contracts.ts                 # Request, tool and event contracts
   documents.ts                 # Six lesson notes and bounded keyword search
   client.ts                    # Browser interaction and actual event display
+  markdown.ts                  # Sanitized answers and shared code-block presentation
   server.ts                    # Local HTTP host; provider key stays here
   sample.ts                    # Terminal examples
   mastra/
