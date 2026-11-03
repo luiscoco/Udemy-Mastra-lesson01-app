@@ -1,12 +1,12 @@
-# Mastra · Lesson 01 · Introduction to Mastra
+# Mastra · Lesson 01 · Your Mastra tutor
 
-A practical, document-grounded tutor for the first lesson of **Mastra AI Agents**. Five linked student pages follow the visual language and content structure of the reference Claude Agent SDK course applications.
+A small, runnable companion app for **Lesson 1 – Introduction to Mastra**. You ask a question about the lesson. A real Mastra agent searches six bundled lesson notes with a typed tool. The model writes a short answer that cites those notes, and the browser shows each step of the run.
 
-![Lesson 1 application preview](docs/application-preview.png)
+![Application preview](docs/application-preview.png)
 
-## Start the application
+## Quick start
 
-Use Node.js 24 or newer.
+You need Node.js 24 or newer.
 
 ```powershell
 git clone https://github.com/luiscoco/Udemy-Mastra-lesson01-app.git
@@ -15,129 +15,138 @@ npm ci
 npm start
 ```
 
-Open **http://127.0.0.1:3201**. Starting the server does not call a model. **Try document search** immediately runs keyword search over the six bundled lesson notes, with no provider key and no fabricated AI answer.
+Open **http://127.0.0.1:3201**. You don't need an API key for **Try document search**. It runs a local keyword search and makes no model calls.
 
-## Configure the real Mastra tutor
-
-Stop the server, then create a local `.env` file if one does not already exist:
+To use **Run tutor agent**, add a provider key:
 
 ```powershell
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 ```
 
-Replace the placeholder with your own key:
-
 ```dotenv
 OPENAI_API_KEY=your_api_key
-MASTRA_MODEL=openai/gpt-4.1-mini
+MASTRA_MODEL=openai/gpt-4.1-mini   # any OpenAI model your account can use, in openai/model-name form
 PORT=3201
 ```
 
-Choose a model your provider account can access, in `openai/model-name` form. Restart with `npm start`, then choose **Run tutor agent**. Live generation uses your provider account and may incur API usage. The key remains on the server; `.env` is ignored by Git. Existing shell environment values take precedence over `.env`.
+Restart with `npm start`. Values already set in your shell override the ones in `.env`. Git ignores `.env`, and the key never leaves the server. Live runs use your provider account and may cost money.
 
-Bash alternative:
+## The student pages
 
-```bash
-[ -f .env ] || cp .env.example .env
-# Edit .env with your preferred editor.
-npm start
+| Page | File | Purpose |
+| --- | --- | --- |
+| Meet your Mastra tutor | `index.html` | The lab: ask a question, run the local search or the live tutor, then inspect the evidence, the event log and the answer. |
+| What you will learn | `learn.html` | Maps agents, tools, data, memory, workflows and observability onto this app. |
+| How to run | `run.html` | Covers cloning, configuring, starting, changing and verifying the app. |
+| Architecture & workflow | `architecture.html` | Follows one question through a UML sequence diagram (`architecture.svg`) with source-linked steps. |
+| Code walkthrough | `walkthrough.html` | Shows excerpts taken from the real TypeScript source, with syntax highlighting and GitHub line links. |
+
+Every page supports light and dark themes and adapts to mobile screens. Answers are rendered as sanitized Markdown (`marked` and `DOMPurify`). Code blocks use the same Prism highlighting and copy buttons as the explanation pages.
+
+## How a question flows through the app
+
+```text
+Browser (client.ts)
+  │  POST /api/search ── searchNotes() ──► up to 3 passages, 0 model calls
+  │
+  │  POST /api/query  (streamed NDJSON events)
+  ▼
+server.ts ── validates with Zod, local-origin check, one run at a time, 90 s deadline
+  ▼
+agent.ts  runTutor()
+  │  emits: started → model
+  ▼
+mastra/index.ts  new Mastra({ agents: { tutor } })
+  ▼
+agents/tutor.ts  Agent = instructions + openai model + searchLessonDocs
+  │  tutor.generate(question, { maxSteps: 3, maxOutputTokens: 1200 })
+  ▼
+tools/search-lesson-docs.ts  createTool() → searchNotes(query)
+  │  emits: tool (query + returned passages)
+  ▼
+agent.ts  checks the result ── emits: answer → result (complete | needs-review)
 ```
 
-## The five student pages
+1. **Validation.** The server takes only JSON from its own local page. The question can be at most 1,500 characters, and the request body at most 8 KB.
+2. **Registry.** Each run creates a fresh `Mastra` registry, so that run's event callback reaches only the browser that started it.
+3. **Agent.** The tutor's instructions tell it to search before answering and to answer only from the returned passages. It must cite each passage by ID, for example `[orchestration]`, and keep the answer under 180 words.
+4. **Tool.** `searchLessonDocs` scores the six notes by keyword and returns at most three. Its input and output are typed with Zod.
+5. **Result check.** A run counts as `complete` only if four things hold: the model stopped normally, the answer isn't empty, the tool ran at least once, and every cited ID came from passages returned during this run. Otherwise the run is marked `needs-review`.
+6. **Events.** The browser shows the events the app actually emitted (`started`, `model`, `tool`, `answer`, `result`, `error`). It never shows the model's hidden reasoning. **Stop** cancels the request, but provider work that already finished can't be undone.
 
-| Page | What the student does |
-| --- | --- |
-| Application lab | Asks a lesson question, tries local search or the live tutor, and inspects returned evidence and execution events. |
-| What you will learn | Connects agents, tools, data, memory, workflows and observability to the first lesson. |
-| How to run | Clones, configures, starts, changes and verifies the application. |
-| Architecture & workflow | Follows a downloadable UML sequence and source-linked steps. |
-| Code walkthrough | Reads excerpts generated from the actual TypeScript source, with line links and syntax highlighting. |
+> The citation check only confirms that the cited IDs are real. It does not confirm that the passages support the answer. Read the passages yourself to judge that.
 
-All pages support the shared light/dark theme and responsive layout. The astronaut artwork, typography, orange heading accent, blue navigation, pastel cards and code-highlighting integration follow the supplied reference apps.
+## HTTP endpoints
 
-AI answers render sanitized Markdown. Fenced code blocks use the same Prism highlighting, navy panels and copy-code controls as the explanation pages. Headings, lists, inline code and tables are formatted instead of displaying raw Markdown.
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/health` | Returns the app name and version. |
+| GET | `/api/config` | Reports whether a provider is configured, plus the model, default question, step limit and note count. |
+| GET | `/api/documents` | Returns the six lesson notes. |
+| POST | `/api/search` | Runs the keyword search only (`modelCalls: 0`). |
+| POST | `/api/query` | Runs the live tutor and streams `application/x-ndjson` events. Returns 503 if no key is configured and 409 if another run is active. |
 
-## What runs
+## Lesson notes
 
-The live tutor uses the real `@mastra/core` runtime:
+`orchestration` · `agent` · `tools` · `workflows` · `context` (memory and retrieval) · `observability`
 
-1. The local HTTP host validates the question with Zod.
-2. A `Mastra` registry contains the tutor `Agent`.
-3. The agent combines instructions, a configured model and `searchLessonDocs`.
-4. `createTool()` defines the search operation and its input/output schemas.
-5. The model can request the tool. The implementation returns up to three real passages with source IDs.
-6. `generate()` returns the explanation. The host checks the finish reason and that cited IDs came from this run's evidence.
+The app runs one agent and one tool over a small keyword-search data source, plus an event log. Workflows, persistent memory, vector retrieval, tracing and evaluations come up only as concepts. None of them is configured here.
 
-The application displays actual tool events, returned passages and the final answer. It does not show hidden model reasoning. The agent has a three-step limit, a 90-second deadline and a bounded output size. Stop requests cancellation; cancellation cannot undo provider work already completed.
-
-**Citation-ID validation is a structural check.** Read the passages to determine whether the answer's claims are actually supported. A complete status does not certify semantic correctness.
-
-The key-free search button directly calls the same `searchNotes()` helper used by the tool. It does not invoke an agent or a model and is labelled accordingly.
-
-## Lesson scope
-
-This first application implements one agent, one typed tool, a small keyword-search data source and an application event log. It introduces workflows, memory, vector retrieval, tracing and evaluations conceptually. It does not configure persistent conversation storage, a vector database, an executable support workflow, a trace exporter or an evaluation platform.
-
-The framework's broader capabilities belong to the lesson's conceptual map; the UI distinguishes them from what this app actually runs.
-
-## Terminal examples
+## Terminal commands
 
 ```powershell
-npm run search -- "memory and retrieval"
-npm run sample -- "What is an agent?"
+npm run search -- "memory and retrieval"   # key-free keyword search
+npm run sample -- "What is an agent?"      # real tutor run; prints each event as JSON
 ```
 
-The first command is key-free. The second runs the real tutor and loads an optional `.env` file, using the same agent and checks as the browser.
+`sample` reads `.env` and uses the same agent and checks as the browser. It exits with code 1 if the run isn't `complete`.
 
-## Make changes and verify
+## Build and test
 
 ```powershell
-npm run build
-npm test
+npm run build          # regenerate the five HTML pages and bundle public/client.js
+npm test               # type-check + offline tests (no model calls)
+npm run test:browser   # optional: Markdown/formatting regression in Chrome
 ```
 
-`build` regenerates all five pages and the browser script. Source snippets and GitHub line references come from the actual files, so rebuild after source edits. Generated public files are committed so a fresh clone can start immediately after `npm ci`.
+- `scripts/build-pages.ts` generates the pages and embeds source excerpts and line links from the real files. Rebuild after you edit `src/`. The generated files in `public/` are committed, so a fresh clone runs right after `npm ci`.
+- The offline tests (`tests/lesson.test.ts`, `tests/server.test.ts`) cover search results, invalid input, citation checks, Mastra registration, whether the excerpts are up to date, and HTTP behavior.
+- `test:browser` needs Chrome, or set `BROWSER_EXECUTABLE`. It serves a fixed response and checks Markdown rendering, code colors, copy buttons, mobile layout and sanitization.
+- CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run build` and `npm test` on every push and pull request.
 
-Offline tests cover retrieval outcomes, invalid inputs, citation provenance, registration with the installed Mastra runtime, source-excerpt freshness and HTTP behavior. They make no paid model calls. A configured provider and a live run are needed to verify real model behavior in your own environment.
+## Suggested exercise
 
-Optional response-formatting browser regression: run `npm run test:browser` with Chrome installed, or set `BROWSER_EXECUTABLE` to your Chrome/Chromium executable. It starts an isolated local test server, supplies a controlled response fixture, and checks Markdown, shared snippet colors, copy controls, mobile layout and HTML sanitization without a model call.
-
-## Suggested student exercise
-
-1. Run local search for **How do memory and retrieval differ?** Read the returned notes.
-2. Run the configured tutor with the same question. Compare the answer with the evidence.
-3. Change the tutor instructions to use a support-desk example. Rebuild and restart.
-4. Ask an unsupported question. Inspect the response and any review status.
-5. Explain which code belongs to the product, Mastra orchestration and provider infrastructure.
+1. Run the local search for **How do memory and retrieval differ?** and read the notes it returns.
+2. Ask the live tutor the same question. Compare its answer with the passages.
+3. Edit `TUTOR_INSTRUCTIONS` in `src/mastra/agents/tutor.ts` to use a support-desk example. Then rebuild and restart.
+4. Ask a question the notes don't cover, and look at the result status.
+5. Sort the code into three groups: product code, Mastra orchestration and provider infrastructure.
 
 ## Project layout
 
 ```text
 src/
-  agent.ts                     # Bounded generation and completion/citation checks
-  contracts.ts                 # Request, tool and event contracts
-  documents.ts                 # Six lesson notes and bounded keyword search
-  client.ts                    # Browser interaction and actual event display
-  markdown.ts                  # Sanitized answers and shared code-block presentation
-  server.ts                    # Local HTTP host; provider key stays here
-  sample.ts                    # Terminal examples
+  server.ts                     # Local HTTP host, static assets, API, streaming
+  agent.ts                      # runTutor(): limits, events, completion and citation checks
+  contracts.ts                  # Zod schemas, LabEvent types, checkCitations()
+  documents.ts                  # Six lesson notes and searchNotes()
+  client.ts                     # Browser lab logic (bundled to public/client.js)
+  markdown.ts                   # Sanitized Markdown and shared code-block rendering
+  sample.ts                     # Terminal search and tutor runs
   mastra/
-    index.ts                   # Agent registration
-    agents/tutor.ts            # Model, instructions and tools
-    tools/search-lesson-docs.ts # Actual Mastra tool
-scripts/build-pages.ts         # Generated student pages and source-linked excerpts
-public/                       # Five pages, UML SVG, shared style and browser assets
-tests/                        # Offline behavior and integration checks
+    index.ts                    # Mastra registry
+    agents/tutor.ts             # Tutor agent and instructions
+    tools/search-lesson-docs.ts # createTool() definition
+scripts/build-pages.ts          # Generates the student pages
+public/                         # Pages, styles, Prism, UML SVG, astronaut artwork
+tests/                          # Offline and browser checks
+docs/                           # Screenshots and QA records
 ```
 
-## References and visual provenance
+## References
 
-- [Lesson 1 visual/content reference](https://github.com/luiscoco/Udemy-Claude-Agent-SDK-lesson01-app)
-- [Lesson 60 visual/content reference](https://github.com/luiscoco/Udemy-Claude-Agent-SDK-lesson60-app)
-- [Mastra agents](https://mastra.ai/docs/agents/overview)
-- [Agent.generate()](https://mastra.ai/reference/agents/generate)
-- [createTool()](https://mastra.ai/reference/tools/create-tool)
-- [Mastra registry](https://mastra.ai/reference/core/mastra-class)
+- [Mastra agents](https://mastra.ai/docs/agents/overview) · [Agent.generate()](https://mastra.ai/reference/agents/generate) · [createTool()](https://mastra.ai/reference/tools/create-tool) · [Mastra class](https://mastra.ai/reference/core/mastra-class)
+- Visual style references: [Claude Agent SDK lesson 01 app](https://github.com/luiscoco/Udemy-Claude-Agent-SDK-lesson01-app) and [lesson 60 app](https://github.com/luiscoco/Udemy-Claude-Agent-SDK-lesson60-app)
 
-The course astronaut, base stylesheet and code-highlighting integration come from the user's lesson 1 reference repository. Prism's license is retained in `public/prism-LICENSE.txt`. Lesson prose and the practical tutor are adapted to the supplied Introduction to Mastra lesson.
+The astronaut artwork, base stylesheet and code-highlighting setup come from the lesson 01 reference repository. Prism's license is in `public/prism-LICENSE.txt`.
