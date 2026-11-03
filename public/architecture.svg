@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1180" viewBox="0 0 1280 1180" role="img" aria-labelledby="title description">
+<title id="title">Mastra lesson 1: a document-grounded tutor run</title><desc id="description">Browser to local host, Mastra agent to model, tool request and lesson note lookup, then a cited answer and completion checks. This shows the live path when a tool is requested.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8" fill="none" stroke="#087fff" stroke-width="1.5"/></marker><marker id="return" markerWidth="10" markerHeight="10" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8" fill="none" stroke="#7860ac" stroke-width="1.5"/></marker></defs>
+<rect width="1280" height="1180" rx="24" fill="#fff"/><text x="42" y="48" font-family="Segoe UI,Arial,sans-serif" font-size="28" fill="#101a44" font-weight="700">One question. Observable evidence. A checked result.</text>
+<text x="42" y="82" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#405780">Live agent path · tool request shown when the model chooses to search · maximum 3 model steps</text>
+<g font-family="Segoe UI,Arial,sans-serif" font-size="19" fill="#101a44" text-anchor="middle">
+<rect x="35" y="120" width="180" height="82" rx="16" fill="#eaf5ff" stroke="#bddaf8"/><text x="125" y="153" font-weight="700">Student browser</text><text x="125" y="179">Product interface</text>
+<rect x="278" y="120" width="215" height="82" rx="16" fill="#eaf5ff" stroke="#bddaf8"/><text x="385" y="153" font-weight="700">Local host + Mastra</text><text x="385" y="179">Agent orchestration</text>
+<rect x="558" y="120" width="185" height="82" rx="16" fill="#f1ebff" stroke="#d4c6f6"/><text x="650" y="153" font-weight="700">Model provider</text><text x="650" y="179">Inference</text>
+<rect x="808" y="120" width="185" height="82" rx="16" fill="#e9f8f1" stroke="#bce5d2"/><text x="900" y="153" font-weight="700">Search tool</text><text x="900" y="179">Typed operation</text>
+<rect x="1058" y="120" width="185" height="82" rx="16" fill="#e9f8f1" stroke="#bce5d2"/><text x="1150" y="153" font-weight="700">Lesson notes</text><text x="1150" y="179">Six local passages</text></g>
+<g stroke="#bbcde0" stroke-dasharray="7 7" stroke-width="2"><path d="M125 210V1020M385 210V1020M650 210V1020M900 210V1020M1150 210V1020"/></g>
+<g font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#101a44">
+<text x="148" y="250">1. POST /api/query { question }</text><path d="M125 270H385" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="274" y="299" width="222" height="65" rx="12" fill="#f4f9ff" stroke="#d4e5fa"/><text x="288" y="326">2. Validate input; create</text><text x="288" y="349">registry and tutor agent</text>
+<text x="406" y="401">3. tutor.generate()</text><path d="M385 422H650" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="406" y="468">4. Request searchLessonDocs</text><path d="M650 488H385" stroke="#7860ac" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#return)"/>
+<text x="422" y="534">5. Validate query; execute tool</text><path d="M385 554H900" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="930" y="601">6. Keyword lookup</text><path d="M900 621H1150" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="927" y="668">7. Source IDs + text</text><path d="M1150 688H900" stroke="#7860ac" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#return)"/>
+<text x="476" y="735">8. Tool result returns to the agent</text><path d="M900 755H385" stroke="#7860ac" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#return)"/>
+<text x="406" y="802">9. Evidence in context</text><path d="M385 822H650" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="406" y="869">10. Final text + source citations</text><path d="M650 889H385" stroke="#7860ac" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#return)"/>
+<rect x="265" y="920" width="240" height="62" rx="12" fill="#f4f9ff" stroke="#d4e5fa"/><text x="279" y="946">11. Check finish reason</text><text x="279" y="969">and returned-source IDs</text>
+<text x="143" y="1026">12. Answer, evidence, events</text><path d="M385 1046H125" stroke="#087fff" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="1090" width="1200" height="56" rx="14" fill="#eaf5ff"/><text x="60" y="1124">The application event log reports actual events. Citation-ID validity still needs a factual support check.</text></g>
+</svg>

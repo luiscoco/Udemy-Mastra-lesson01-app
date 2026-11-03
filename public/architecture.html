@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Learn Introduction to Mastra with a practical document-grounded tutor, source-linked code and a guided application workflow.">
+<title>Mastra · Lesson 01 · Architecture and workflow</title><link rel="icon" href="/astronaut.png">
+<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/lesson.css"><link rel="stylesheet" href="/code-highlighting.css"></head>
+<body><a class="skip-link" href="#content">Skip to lesson content</a><main>
+<div class="brand"><a href="/">How <span>Mastra</span> Works</a><span class="badge">LESSON 01 / INTRODUCTION</span></div>
+<header class="hero"><div><div class="eyebrow">AGENTS · TOOLS · ORCHESTRATION</div><h1>Follow one <em>question.</em></h1><p class="lead">Trace the product boundary, Mastra orchestration, model calls and returned evidence.</p></div><img src="/astronaut.png" width="190" height="190" alt="Course astronaut mascot"></header>
+<nav class="nav" aria-label="Application sections"><a href="/">Application lab</a><a href="/learn.html">What you will learn</a><a href="/run.html">How to run</a><a href="/architecture.html" aria-current="page">Architecture & workflow</a><a href="/walkthrough.html">Code walkthrough</a><button id="theme" type="button">Dark mode</button></nav>
+<div id="content" tabindex="-1">
+<section class="step"><h2>One small application, three layers</h2><div class="grid"><article class="card"><h3>Product</h3><p>Five student pages, the question form, the local HTTP host and result checks.</p></article><article class="card"><h3>Orchestration</h3><p>A Mastra registry, one tutor agent, its instructions and the lesson-search tool.</p></article><article class="card"><h3>Infrastructure</h3><p>A configured model provider and six local source notes. No external database is required.</p></article></div><p>This sequence shows a live tutor run in which the model requests the search tool. Tool choice comes from the model; the application checks whether evidence was actually used.</p><a class="button" href="/architecture.svg" download>Download the UML sequence SVG</a></section>
+<div class="diagram"><img src="/architecture.svg" alt="Sequence from browser question through request validation, Mastra agent generation, model tool request, local document search, cited answer and application checks"></div>
+<section class="step workflow-step" id="workflow-step-1"><span class="number">01</span><h2>Validate the student's question</h2><p>Browser → local host. Invalid questions are rejected before the agent is invoked.</p><div class="code-toolbar"><p class="source">Source: <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app/blob/main/src/contracts.ts#L3-L5">src/contracts.ts · lines 3–5</a></p><button type="button" data-copy="code-8" aria-label="Copy code: Source: src/contracts.ts · lines 3–5">Copy code</button></div><pre><code id="code-8" class="language-typescript">export const questionSchema = z.object({
+  question: z.string().trim().min(1, &quot;Enter a question first.&quot;).max(1500, &quot;Keep the question under 1,500 characters.&quot;),
+}).strict();</code></pre></section><section class="step workflow-step" id="workflow-step-2"><span class="number">02</span><h2>Create the agent and its registry</h2><p>Host → Mastra. The tutor receives its model, instructions and search tool, then is registered under the tutor key.</p><div class="code-toolbar"><p class="source">Source: <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app/blob/main/src/mastra/index.ts#L1-L9">src/mastra/index.ts · lines 1–9</a></p><button type="button" data-copy="code-12" aria-label="Copy code: Source: src/mastra/index.ts · lines 1–9">Copy code</button></div><pre><code id="code-12" class="language-typescript">import { Mastra } from &quot;@mastra/core/mastra&quot;;
+import { createTutor } from &quot;./agents/tutor.js&quot;;
+import type { LabEvent } from &quot;../contracts.js&quot;;
+
+// Build one registry per run so its event callback belongs to that browser run.
+export function createLessonMastra(model: `openai/${string}`, emit: (event: LabEvent) =&gt; void) {
+  const tutor = createTutor(model, emit);
+  return new Mastra({ agents: { tutor } });
+}</code></pre></section><section class="step workflow-step" id="workflow-step-3"><span class="number">03</span><h2>Expose the search operation</h2><p>Mastra → tool. The tool validates its query and returns bounded source passages when the model requests it.</p><div class="code-toolbar"><p class="source">Source: <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app/blob/main/src/mastra/tools/search-lesson-docs.ts#L1-L17">src/mastra/tools/search-lesson-docs.ts · lines 1–17</a></p><button type="button" data-copy="code-10" aria-label="Copy code: Source: src/mastra/tools/search-lesson-docs.ts · lines 1–17">Copy code</button></div><pre><code id="code-10" class="language-typescript">import { createTool } from &quot;@mastra/core/tools&quot;;
+import { toolInputSchema, toolOutputSchema, type LabEvent } from &quot;../../contracts.js&quot;;
+import { searchNotes } from &quot;../../documents.js&quot;;
+
+export function createSearchLessonDocs(emit: (event: LabEvent) =&gt; void) {
+  return createTool({
+    id: &quot;search-lesson-docs&quot;,
+    description: &quot;Search the bundled Introduction to Mastra handbook. Use it before answering lesson questions. Returns up to three passages with source IDs for citations.&quot;,
+    inputSchema: toolInputSchema,
+    outputSchema: toolOutputSchema,
+    execute: async ({ query }) =&gt; {
+      const documents = searchNotes(query);
+      emit({ type: &quot;tool&quot;, query, documents, text: `searchLessonDocs returned ${documents.length} lesson passages.` });
+      return { documents };
+    },
+  });
+}</code></pre></section><section class="step workflow-step" id="workflow-step-4"><span class="number">04</span><h2>Use the actual returned evidence</h2><p>Tool → model. The model receives source IDs and passages, then can produce a grounded explanation. No external search service is involved.</p><div class="code-toolbar"><p class="source">Source: <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app/blob/main/src/documents.ts#L33-L44">src/documents.ts · lines 33–44</a></p><button type="button" data-copy="code-9" aria-label="Copy code: Source: src/documents.ts · lines 33–44">Copy code</button></div><pre><code id="code-9" class="language-typescript">export function searchNotes(query: string): LessonDocument[] {
+  const tokens = [...new Set(normalize(query).split(&quot; &quot;).filter(word =&gt; word &amp;&amp; !STOP_WORDS.has(word)))];
+  if (!tokens.length) return [];
+  return LESSON_NOTES.map((document, index) =&gt; {
+    const keywords = document.keywords.map(normalize);
+    const body = normalize(`${document.title} ${document.text}`).split(&quot; &quot;);
+    const score = tokens.reduce((sum, token) =&gt; sum + (keywords.some(word =&gt; word === token) ? 4 : body.includes(token) ? 1 : 0), 0);
+    return { document, score, index };
+  }).filter(item =&gt; item.score &gt; 0)
+    .sort((a, b) =&gt; b.score - a.score || a.index - b.index)
+    .slice(0, 3).map(({ document }) =&gt; ({ id: document.id, title: document.title, text: document.text }));
+}</code></pre></section><section class="step workflow-step" id="workflow-step-5"><span class="number">05</span><h2>Finish and check</h2><p>Model → host → browser. The host handles the final text, checks completion and cited IDs, and reports the observed tool calls and step count.</p><div class="code-toolbar"><p class="source">Source: <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app/blob/main/src/agent.ts#L36-L52">src/agent.ts · lines 36–52</a></p><button type="button" data-copy="code-13" aria-label="Copy code: Source: src/agent.ts · lines 36–52">Copy code</button></div><pre><code id="code-13" class="language-typescript">  const result = await tutor.generate(question, {
+    maxSteps: MAX_STEPS,
+    abortSignal: signal,
+    modelSettings: { maxOutputTokens: 1200 },
+  });
+  if (signal.aborted) throw new Error(&quot;Run cancelled.&quot;);
+  const answer = result.text.trim();
+  const citations = checkCitations(answer, availableIds);
+  const complete = result.finishReason === &quot;stop&quot; &amp;&amp; answer.length &gt; 0 &amp;&amp; toolCalls &gt; 0 &amp;&amp; citations.valid;
+  if (answer) emit({ type: &quot;answer&quot;, text: answer });
+  emit({ type: &quot;result&quot;, status: complete ? &quot;complete&quot; : &quot;needs-review&quot;,
+    text: complete ? &quot;The generation finished, searched the lesson notes and cited returned source IDs. Read the passages to check that they support the answer.&quot;
+      : &quot;Review this result: the run did not produce a finished answer with citations to returned passages. A run limit, missing evidence or an unsupported question may be the cause.&quot;,
+    sourceIds: citations.ids, toolCalls, steps: result.steps.length,
+    durationMs: Math.round(performance.now() - started),
+  });
+}</code></pre></section>
+<section class="note"><strong>Local search path:</strong> Try document search calls the search helper directly and returns passages to the browser. It bypasses agent generation and makes zero model calls. Its events and results are labelled accordingly.</section>
+<section class="step"><h2>Agent loop and defined workflows</h2><p>The tutor can choose a tool within its instructions and run limit. A future support-ticket workflow could require a fixed sequence: fetch customer data → classify → draft or pause for a human decision. This app introduces that distinction without pretending to execute an unimplemented workflow.</p></section><div class="actions"><a class="button" href="/walkthrough.html">Explain each code step →</a><a class="button" href="/">Return to the lab →</a></div></div>
+<footer>MASTRA AI AGENTS · LESSON 01 · INTRODUCTION TO MASTRA<br>TypeScript · a local teaching application · provider credentials stay on the server<br><a href="https://mastra.ai/docs">Official Mastra documentation</a> · <a href="https://github.com/luiscoco/Udemy-Mastra-lesson01-app">Application source on GitHub</a></footer>
+</main><script src="/navigation.js"></script><script src="/prism.js"></script><script src="/code-highlighting.js"></script></body></html>

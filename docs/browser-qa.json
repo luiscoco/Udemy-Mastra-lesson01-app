@@ -1,0 +1,18 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-11-03T09:02:42.815Z",
+  "browser": "155.0.8059.85",
+  "checks": [
+    "The application loads and accurately reflects provider readiness.",
+    "Actual key-free document search returns the memory/retrieval evidence and zero model steps.",
+    "An unsupported lookup displays an honest no-results outcome.",
+    "A whitespace-only question is rejected before a request.",
+    "Dark mode persists between pages and the concept checks expand correctly.",
+    "Source excerpts are syntax-highlighted and the copy handler receives the actual source text.",
+    "All five pages navigate with one active section and the sequence SVG is available.",
+    "All five pages fit a 390px viewport without page-level horizontal overflow.",
+    "No browser JavaScript or console errors were observed."
+  ],
+  "liveModelCallsTested": false,
+  "screenshot": "docs/application-preview.png"
+}
